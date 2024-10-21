@@ -1,8 +1,19 @@
-import { Router } from 'express';
+import express from 'express';
+import multer from 'multer';
 
-const router = Router();
+import { register, login } from '../controllers/auth.js';
 
-router.get('/', (req, res) => {
+const api = express.Router();
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+api.get('/status', (req, res) => {
   return res.status(200).json({ status: 'Running' });
 });
-export default router;
+
+api.post('/register', upload.single('profilePhoto'), register);
+
+api.post('/login', express.json(), login);
+
+export default api;

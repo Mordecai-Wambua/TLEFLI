@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import home from './routes/router.js';
+import api from './routes/router.js';
+import userRouter from './routes/user.js';
 import database from './config/db.js';
 import logger from './middleware/logger.js';
 import notFound from './middleware/notFound.js';
@@ -12,11 +13,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
 app.use(logger);
 
-// Existing routes
-app.use('/', home);
+// Routes
+app.get('/', (req, res) => {
+  res.redirect(301, 'api/status');
+});
+
+// Routers
+app.use('/api', api);
+app.use('/api/user', userRouter);
 
 // Method not allowed middleware
 app.use(methodNotAllowed);
