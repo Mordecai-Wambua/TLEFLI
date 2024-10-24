@@ -1,12 +1,8 @@
 import express from 'express';
-import multer from 'multer';
-
 import { register, login } from '../controllers/auth.js';
+import upload from '../utils/upload.js';
 
 const api = express.Router();
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 api.get('/status', (req, res) => {
   return res.status(200).json({ status: 'Running' });

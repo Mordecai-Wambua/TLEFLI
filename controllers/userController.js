@@ -7,7 +7,6 @@ export async function profile(req, res) {
     }
 
     const userId = req.user.id; // Extracted from the token by verifyToken middleware
-
     const user = await User.findById(userId).select('-password -role -__v');
 
     if (!user) {
@@ -35,7 +34,6 @@ export async function profile(req, res) {
 
 export async function updateProfile(req, res) {
   const { firstName, lastName, email } = req.body;
-  const profilePhoto = req.file;
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: 'Unauthorized access!' });
@@ -58,8 +56,8 @@ export async function updateProfile(req, res) {
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
     if (profilePhoto) {
-      photoData = req.file.buffer;
-      contentType = req.file.mimetype;
+      const photoData = req.file.buffer;
+      const contentType = req.file.mimetype;
       user.profilePhoto = {
         data: photoData,
         contentType: contentType,
