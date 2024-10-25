@@ -1,7 +1,9 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import api from './routes/router.js';
 import userRouter from './routes/user.js';
+import adminRouter from './routes/admin.js';
 import database from './config/db.js';
 import logger from './middleware/logger.js';
 import notFound from './middleware/notFound.js';
@@ -10,9 +12,10 @@ import methodNotAllowed from './middleware/allowedMethod.js';
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 5000;
+const app = express();
 
+app.use(cors());
 app.use(logger);
 
 // Routes
@@ -23,6 +26,7 @@ app.get('/', (req, res) => {
 // Routers
 app.use('/api', api);
 app.use('/api/user', userRouter);
+app.use('/api/admin', adminRouter);
 
 // Method not allowed middleware
 app.use(methodNotAllowed);
