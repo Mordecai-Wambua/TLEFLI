@@ -33,7 +33,8 @@ export async function profile(req, res) {
 }
 
 export async function updateProfile(req, res) {
-  const { firstName, lastName, email } = req.body;
+  const { firstName, lastName, email } = req.body || {};
+  const profilePhoto = req.file;
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: 'Unauthorized access!' });
@@ -49,15 +50,15 @@ export async function updateProfile(req, res) {
     if (!firstName && !lastName && !email && !profilePhoto) {
       return res
         .status(400)
-        .json({ message: 'At least one fields is required!' });
+        .json({ message: 'At least one field is required!' });
     }
 
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
     if (profilePhoto) {
-      const photoData = req.file.buffer;
-      const contentType = req.file.mimetype;
+      const photoData = profilePhoto.buffer;
+      const contentType = profilePhoto.mimetype;
       user.profilePhoto = {
         data: photoData,
         contentType: contentType,
