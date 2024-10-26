@@ -4,6 +4,8 @@ import User from '../models/User.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
+import { uploadFile } from '../utils/bucket.js';
+import { randomNameGenerator } from '../utils/randomNames.js';
 
 dotenv.config();
 
@@ -11,10 +13,10 @@ const JWT_SECRET = process.env.JWT_KEY;
 const defaultProfilePhotoPath = path.resolve('utils', 'profile.jpeg');
 
 export async function register(req, res) {
-  const { firstName, lastName, email, password } = req.body || {};
+  const { firstName, lastName, email, password, phone } = req.body || {};
 
   try {
-    if (!(email && password && firstName && lastName)) {
+    if (!(email && password && firstName && lastName && phone)) {
       return res.status(400).json({ message: 'All input is required!' });
     }
 
@@ -25,6 +27,7 @@ export async function register(req, res) {
 
     let photoData;
     let contentType;
+    const imageName = randomNameGenerator();
 
     if (req.file) {
       console.log('User uploaded profile photo:', req.file);
@@ -37,6 +40,7 @@ export async function register(req, res) {
     }
 
     const hashedPassword = bcrypt.hashSync(password, 10);
+    await uploadFile({ photoData, contentType }, imageName);
 
     // Create a new user
     const newUser = new User({
@@ -45,10 +49,8 @@ export async function register(req, res) {
       email,
       role: 'user',
       password: hashedPassword,
-      profilePhoto: {
-        data: photoData,
-        contentType: contentType,
-      },
+      profilePhoto: imageName,
+      phone,
     });
 
     await newUser.save();

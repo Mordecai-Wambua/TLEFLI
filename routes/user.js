@@ -7,7 +7,9 @@ import upload from '../utils/upload.js';
 import {
   reportLostItem,
   getLostItems,
+  getLostItem,
   updateLostItem,
+  deleteLostItem,
 } from '../controllers/itemController.js';
 
 const userRouter = express.Router();
@@ -26,7 +28,9 @@ userRouter.get('/', express.json(), authJWT, authorizeUser, (req, res) => {
   return res.status(200).json({ message: 'User Dashboard' });
 });
 
-userRouter.get('/lost-item', authJWT, authorizeUser, getLostItems);
+userRouter.get('/lost-items', authJWT, authorizeUser, getLostItems);
+
+userRouter.get('/lost-item/:id', authJWT, authorizeUser, getLostItem);
 
 userRouter.post(
   '/lost-item',
@@ -43,5 +47,7 @@ userRouter.put(
   upload.single('itemImage'),
   updateLostItem
 );
+
+userRouter.delete('/lost-item/:id', authJWT, authorizeUser, deleteLostItem);
 
 export default userRouter;

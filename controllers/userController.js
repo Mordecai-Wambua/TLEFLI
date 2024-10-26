@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { uploadFile, getFile } from '../utils/bucket.js';
 
 export async function profile(req, res) {
   try {
@@ -13,18 +14,11 @@ export async function profile(req, res) {
       return res.status(404).json({ message: 'User not found!' });
     }
 
-    const base64Photo = Buffer.from(user.profilePhoto.data).toString('base64');
-    const profilePhoto = `data:${user.profilePhoto.contentType};base64,${base64Photo}`;
+    const userProfile = user.toObject();
+    userProfile.profilePhoto = await getFile(user.profilePhoto);
 
     return res.status(200).json({
-      profile: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        date_joined: user.created_at,
-        profilePhoto,
-      },
+      profile: userProfile,
     });
   } catch (error) {
     console.error('Error fetching profile:', error);
@@ -33,8 +27,10 @@ export async function profile(req, res) {
 }
 
 export async function updateProfile(req, res) {
-  const { firstName, lastName, email } = req.body || {};
+  const { firstName, lastName, email, phone } = req.body || {};
   const profilePhoto = req.file;
+
+  console.log('Profile update request:', req.body, req.file);
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: 'Unauthorized access!' });
@@ -47,7 +43,7 @@ export async function updateProfile(req, res) {
     if (!user) {
       return res.status(404).json({ message: 'User not found!' });
     }
-    if (!firstName && !lastName && !email && !profilePhoto) {
+    if (!firstName && !lastName && !email && !phone && !profilePhoto) {
       return res
         .status(400)
         .json({ message: 'At least one field is required!' });
@@ -56,13 +52,20 @@ export async function updateProfile(req, res) {
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
     if (email) user.email = email;
+    if (phone) user.phone = phone;
     if (profilePhoto) {
-      const photoData = profilePhoto.buffer;
-      const contentType = profilePhoto.mimetype;
-      user.profilePhoto = {
-        data: photoData,
-        contentType: contentType,
-      };
+      try {
+        const imageName = user.profilePhoto;
+        const photoData = profilePhoto.buffer;
+        const contentType = profilePhoto.mimetype;
+        await uploadFile({ photoData, contentType }, imageName);
+        user.profilePhoto = imageName;
+      } catch (uploadError) {
+        console.error('Error uploading profile photo:', uploadError);
+        return res
+          .status(500)
+          .json({ message: 'Error uploading profile photo' });
+      }
     }
 
     await user.save();
