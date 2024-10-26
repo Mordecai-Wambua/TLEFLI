@@ -30,7 +30,7 @@ export async function register(req, res) {
     const imageName = randomNameGenerator();
 
     if (req.file) {
-      console.log('User uploaded profile photo:', req.file);
+      console.log('User uploaded profile photo');
       photoData = req.file.buffer;
       contentType = req.file.mimetype;
     } else {

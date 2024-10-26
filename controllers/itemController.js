@@ -67,7 +67,7 @@ export async function reportLostItem(req, res) {
     const imageName = randomNameGenerator();
 
     if (req.file) {
-      console.log('User uploaded an item photo:', req.file);
+      console.log('User uploaded an item photo');
       photoData = req.file.buffer;
       contentType = req.file.mimetype;
     } else {
