@@ -5,10 +5,11 @@ import api from './routes/router.js';
 import userRouter from './routes/user.js';
 import adminRouter from './routes/admin.js';
 import database from './config/db.js';
-import logger from './middleware/logger.js';
+import logger from './utils/logger.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 import methodNotAllowed from './middleware/allowedMethod.js';
+import requestLogger from './middleware/loggerMiddleware.js';
 
 dotenv.config();
 
@@ -16,7 +17,7 @@ const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cors());
-app.use(logger);
+app.use(requestLogger);
 
 // Routes
 app.get('/', (req, res) => {
