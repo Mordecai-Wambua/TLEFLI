@@ -3,13 +3,13 @@ import express from 'express';
 import { profile, updateProfile } from '../controllers/userController.js';
 import { authJWT } from '../middleware/authMiddleware.js';
 import { authorizeUser } from '../middleware/roleMiddleware.js';
-import upload from '../utils/upload.js';
+import uploadMiddleware from '../middleware/uploadMiddleware.js';
 import {
-  reportLostItem,
-  getLostItems,
-  getLostItem,
-  updateLostItem,
-  deleteLostItem,
+  reportItem,
+  getItems,
+  getItem,
+  updateItem,
+  deleteItem,
 } from '../controllers/itemController.js';
 
 const userRouter = express.Router();
@@ -20,7 +20,7 @@ userRouter.put(
   '/profile',
   authJWT,
   authorizeUser,
-  upload.single('profilePhoto'),
+  uploadMiddleware('profilePhoto'),
   updateProfile
 );
 
@@ -28,26 +28,26 @@ userRouter.get('/', express.json(), authJWT, authorizeUser, (req, res) => {
   return res.status(200).json({ message: 'User Dashboard' });
 });
 
-userRouter.get('/lost-items', authJWT, authorizeUser, getLostItems);
+userRouter.get('/items', authJWT, authorizeUser, getItems);
 
-userRouter.get('/lost-item/:id', authJWT, authorizeUser, getLostItem);
+userRouter.get('/item/:id', authJWT, authorizeUser, getItem);
 
 userRouter.post(
-  '/lost-item',
+  '/item',
   authJWT,
   authorizeUser,
-  upload.single('itemImage'),
-  reportLostItem
+  uploadMiddleware('itemImage'),
+  reportItem
 );
 
 userRouter.put(
-  '/lost-item/:id',
+  '/item/:id',
   authJWT,
   authorizeUser,
-  upload.single('itemImage'),
-  updateLostItem
+  uploadMiddleware('itemImage'),
+  updateItem
 );
 
-userRouter.delete('/lost-item/:id', authJWT, authorizeUser, deleteLostItem);
+userRouter.delete('/item/:id', authJWT, authorizeUser, deleteItem);
 
 export default userRouter;

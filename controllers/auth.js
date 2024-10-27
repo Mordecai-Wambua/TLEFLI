@@ -10,6 +10,7 @@ import { randomNameGenerator } from '../utils/randomNames.js';
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_KEY;
+const JWT_REFRESH = process.env.JWT_REFRESH;
 const defaultProfilePhotoPath = path.resolve('utils', 'profile.jpeg');
 
 export async function register(req, res) {
@@ -70,28 +71,58 @@ export async function login(req, res) {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid email!' });
+      return res.status(401).json({ message: 'Invalid credentials!' });
     }
 
     // Compare passwords using bcrypt
-    const isPasswordValid = bcrypt.compareSync(password, user.password);
-
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Invalid password!' });
+    if (!bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ message: 'Invalid credentials!' });
     }
 
-    // Check if user exists
-    if (!user && !isPasswordValid) {
-      return res.status(401).json({ message: 'User does not exist!' });
-    }
+    // Generate JWT
+    const accessToken = generateToken(user);
+    const refreshToken = generateRefreshToken(user);
 
-    return res.status(200).json({
-      token: jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
-        expiresIn: '1h',
-      }),
-    });
+    return res.status(200).json({ accessToken, refreshToken });
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+}
+
+export async function refreshToken(req, res) {
+  const { token } = req.body;
+
+  if (!token) {
+    return res
+      .status(401)
+      .json({ message: 'Access denied. No token provided.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_REFRESH);
+    const user = await User.findById(decoded.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found!' });
+    }
+
+    const accessToken = generateToken(user);
+    return res.status(200).json({ accessToken });
+  } catch (error) {
+    console.error('Refresh token Error:', error);
+    return res.status(403).json({ message: 'Invalid token' });
+  }
+}
+
+function generateToken(user) {
+  return jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+    expiresIn: '1h',
+  });
+}
+
+function generateRefreshToken(user) {
+  return jwt.sign({ id: user._id, role: user.role }, JWT_REFRESH, {
+    expiresIn: '7d',
+  });
 }

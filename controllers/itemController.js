@@ -6,13 +6,13 @@ import { randomNameGenerator } from '../utils/randomNames.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
 const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 
-export async function getLostItems(req, res) {
+export async function getItems(req, res) {
   try {
     const userId = req.user.id;
     const lostItems = await Item.find({ 'reported_by.userId': userId });
 
     if (!lostItems || lostItems.length === 0) {
-      return res.status(404).json({ message: 'No lost items found!' });
+      return res.status(404).json({ message: 'No items found!' });
     }
 
     const items = await Promise.all(
@@ -25,12 +25,12 @@ export async function getLostItems(req, res) {
 
     return res.status(200).json({ items });
   } catch (error) {
-    console.error('Error fetching lost items:', error);
+    console.error('Error fetching items:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
 
-export async function getLostItem(req, res) {
+export async function getItem(req, res) {
   const itemId = req.params.id;
 
   try {
@@ -49,13 +49,26 @@ export async function getLostItem(req, res) {
   }
 }
 
-export async function reportLostItem(req, res) {
-  const { itemName, category, subcategory, location, dateLost, description } =
-    req.body || {};
+export async function reportItem(req, res) {
+  const {
+    type,
+    itemName,
+    category,
+    subcategory,
+    location,
+    dateLost,
+    description,
+  } = req.body || {};
 
   try {
     if (
-      (!itemName, !category, !subcategory, !location, !dateLost, !description)
+      (!type,
+      !itemName,
+      !category,
+      !subcategory,
+      !location,
+      !dateLost,
+      !description)
     ) {
       return res.status(400).json({ message: 'All fields are required!' });
     }
@@ -79,7 +92,7 @@ export async function reportLostItem(req, res) {
     await uploadFile({ photoData, contentType }, imageName);
 
     const newItem = new Item({
-      type: 'lost',
+      type,
       itemName,
       category,
       subcategory,
@@ -99,7 +112,7 @@ export async function reportLostItem(req, res) {
   }
 }
 
-export async function updateLostItem(req, res) {
+export async function updateItem(req, res) {
   const itemId = req.params.id;
   const { itemName, category, subcategory, location, dateLost, description } =
     req.body || {};
@@ -153,7 +166,7 @@ export async function updateLostItem(req, res) {
   }
 }
 
-export async function deleteLostItem(req, res) {
+export async function deleteItem(req, res) {
   const itemId = req.params.id;
 
   try {

@@ -3,10 +3,12 @@ const allowedMethodsMap = {
   '/api/status': ['GET'],
   '/api/register': ['POST'],
   '/api/login': ['POST'],
+  '/api/refresh': ['POST'],
   '/api/user': ['GET'],
-  '/api/profile': ['GET', 'PUT'],
-  '/api/lost-items': ['GET'],
-  '/api/lost-item': ['GET', 'POST', 'PUT', 'DELETE'],
+  '/api/user/profile': ['GET', 'PUT'],
+  '/api/user/items': ['GET'],
+  '/api/user/item': ['POST'],
+  '/api/user/item/:id': ['GET', 'PUT', 'DELETE'],
 };
 
 function methodNotAllowed(req, res, next) {
