@@ -32,6 +32,9 @@ export async function getItems(req, res) {
 
 export async function getItem(req, res) {
   const itemId = req.params.id;
+  if (!validateID(itemId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
 
   try {
     const item = await Item.findById(itemId);
@@ -114,6 +117,11 @@ export async function reportItem(req, res) {
 
 export async function updateItem(req, res) {
   const itemId = req.params.id;
+
+  if (!validateID(itemId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
   const { itemName, category, subcategory, location, dateLost, description } =
     req.body || {};
   const itemImage = req.file;
@@ -169,6 +177,10 @@ export async function updateItem(req, res) {
 export async function deleteItem(req, res) {
   const itemId = req.params.id;
 
+  if (!validateID(itemId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
   try {
     const item = await Item.findById(itemId);
     if (!item) {
@@ -182,4 +194,8 @@ export async function deleteItem(req, res) {
     console.error('Delete Item Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
+}
+
+function validateID(id) {
+  return mongoose.isValidObjectId(id);
 }

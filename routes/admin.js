@@ -1,7 +1,12 @@
 import express from 'express';
 import { authJWT } from '../middleware/authMiddleware.js';
 import { authorizeAdmin } from '../middleware/roleMiddleware.js';
-import { userList } from '../controllers/adminController.js';
+import {
+  userList,
+  getUser,
+  deleteUser,
+  toAdmin,
+} from '../controllers/adminController.js';
 
 const adminRouter = express.Router();
 
@@ -10,5 +15,17 @@ adminRouter.get('/', authJWT, authorizeAdmin, express.json(), (req, res) => {
 });
 
 adminRouter.get('/users', authJWT, authorizeAdmin, express.json(), userList);
+
+adminRouter.get('/user/:id', authJWT, authorizeAdmin, express.json(), getUser);
+
+adminRouter.delete(
+  '/user/:id',
+  authJWT,
+  authorizeAdmin,
+  express.json(),
+  deleteUser
+);
+
+adminRouter.get('/user/:id/toAdmin', authJWT, authorizeAdmin, toAdmin);
 
 export default adminRouter;
