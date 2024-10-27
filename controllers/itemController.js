@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs';
+import mongoose from 'mongoose';
 import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
