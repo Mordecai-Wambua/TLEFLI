@@ -1,7 +1,7 @@
 import winston from 'winston';
 import 'winston-daily-rotate-file';
 
-const logLevel = process.env.NODE_ENV === 'production' ? 'error' : 'debug';
+const logLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
 const logger = winston.createLogger({
   level: logLevel,
   format: winston.format.combine(
@@ -17,6 +17,7 @@ const logger = winston.createLogger({
         winston.format.colorize(),
         winston.format.simple()
       ),
+      silent: process.env.NODE_ENV === 'production',
     }),
     // Daily rotate file transport for log file rotation
     new winston.transports.DailyRotateFile({
@@ -28,12 +29,5 @@ const logger = winston.createLogger({
     }),
   ],
 });
-
-// For production: silent console logs, only file logs
-if (process.env.NODE_ENV === 'production') {
-  logger.transports.find(
-    (t) => t instanceof winston.transports.Console
-  ).silent = true;
-}
 
 export default logger;
