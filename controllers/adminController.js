@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import User from '../models/User.js';
+import Item from '../models/Item.js';
 import { getFile, deleteFile } from '../utils/bucket.js';
 
 export async function userList(req, res) {
@@ -21,6 +22,51 @@ export async function userList(req, res) {
     return res.status(200).json({ count: users.length, userList });
   } catch (error) {
     console.error('Error fetching users:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function itemList(req, res) {
+  try {
+    const lostItems = await Item.find({}).select('-__v');
+
+    if (!lostItems || lostItems.length === 0) {
+      return res.status(404).json({ message: 'No items found!' });
+    }
+
+    const items = await Promise.all(
+      lostItems.map(async (item) => {
+        const itemData = item.toObject();
+        itemData.itemImage = await getFile(item.itemImage); // Await getFile here
+        return itemData;
+      })
+    );
+
+    return res.status(200).json({ items });
+  } catch (error) {
+    console.error('Error fetching items:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function itemDelete(req, res) {
+  const itemId = req.params.id;
+
+  if (!validateID(itemId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
+  try {
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found!' });
+    }
+
+    await deleteFile(item.itemImage);
+    await Item.findByIdAndDelete(itemId);
+    return res.status(200).json({ message: 'Item deleted!' });
+  } catch (error) {
+    console.error('Error deleting item:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -65,6 +111,13 @@ export async function deleteUser(req, res) {
     }
 
     await deleteFile(user.profilePhoto);
+    const items = await Item.find({ 'reported_by.userId': userId });
+    for (const item of items) {
+      console.log('Deleting item:', item._id);
+      await deleteFile(item.itemImage);
+      await Item.findByIdAndDelete(item._id);
+    }
+
     await User.findByIdAndDelete(userId);
     return res.status(200).json({ message: 'User deleted!' });
   } catch (error) {

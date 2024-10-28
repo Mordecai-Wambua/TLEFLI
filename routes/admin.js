@@ -6,6 +6,8 @@ import {
   getUser,
   deleteUser,
   toAdmin,
+  itemList,
+  itemDelete,
 } from '../controllers/adminController.js';
 
 const adminRouter = express.Router();
@@ -27,5 +29,15 @@ adminRouter.delete(
 );
 
 adminRouter.get('/user/:id/toAdmin', authJWT, authorizeAdmin, toAdmin);
+
+adminRouter.get('/items', authJWT, authorizeAdmin, express.json(), itemList);
+
+adminRouter.delete(
+  '/item/:id',
+  authJWT,
+  authorizeAdmin,
+  express.json(),
+  itemDelete
+);
 
 export default adminRouter;

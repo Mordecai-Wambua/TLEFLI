@@ -10,7 +10,9 @@ const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 export async function getItems(req, res) {
   try {
     const userId = req.user.id;
-    const lostItems = await Item.find({ 'reported_by.userId': userId });
+    const lostItems = await Item.find({ 'reported_by.userId': userId }).select(
+      '-__v -reported_by'
+    );
 
     if (!lostItems || lostItems.length === 0) {
       return res.status(404).json({ message: 'No items found!' });
@@ -38,7 +40,7 @@ export async function getItem(req, res) {
   }
 
   try {
-    const item = await Item.findById(itemId);
+    const item = await Item.findById(itemId).select('-__v -reported_by');
     if (!item) {
       return res.status(404).json({ message: 'Item not found!' });
     }

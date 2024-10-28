@@ -23,7 +23,6 @@ const s3 = new S3Client({
 });
 
 export async function uploadFile(file, fileName) {
-  console.log('Uploading file to S3:', fileName);
   const params = {
     Bucket: BUCKET_NAME,
     Key: fileName,
@@ -35,7 +34,6 @@ export async function uploadFile(file, fileName) {
 
   try {
     const data = await s3.send(command);
-    console.log('Successfully uploaded file');
     return data;
   } catch (err) {
     console.error('Error uploading file', err);
@@ -44,7 +42,6 @@ export async function uploadFile(file, fileName) {
 }
 
 export async function deleteFile(fileName) {
-  console.log('Deleting file from S3:', fileName);
   const params = {
     Bucket: BUCKET_NAME,
     Key: fileName,
@@ -52,7 +49,6 @@ export async function deleteFile(fileName) {
 
   try {
     const data = await s3.send(new DeleteObjectCommand(params));
-    console.log('Successfully deleted file');
     return data;
   } catch (err) {
     console.error('Error deleting file', err);
