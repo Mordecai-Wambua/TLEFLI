@@ -56,15 +56,8 @@ export async function getItem(req, res) {
 }
 
 export async function reportItem(req, res) {
-  const {
-    type,
-    itemName,
-    category,
-    subcategory,
-    location,
-    dateLost,
-    description,
-  } = req.body || {};
+  const { type, itemName, category, subcategory, location, date, description } =
+    req.body || {};
 
   try {
     if (
@@ -73,7 +66,7 @@ export async function reportItem(req, res) {
       !category,
       !subcategory,
       !location,
-      !dateLost,
+      !date,
       !description)
     ) {
       return res.status(400).json({ message: 'All fields are required!' });
@@ -103,7 +96,7 @@ export async function reportItem(req, res) {
       category,
       subcategory,
       location,
-      dateLost,
+      date,
       description,
       reported_by: { userName: user.firstName, userId: user._id },
       itemImage: imageName,
@@ -125,7 +118,7 @@ export async function updateItem(req, res) {
     return res.status(400).json({ message: 'Invalid item ID format.' });
   }
 
-  const { itemName, category, subcategory, location, dateLost, description } =
+  const { itemName, category, subcategory, location, date, description } =
     req.body || {};
   const itemImage = req.file;
 
@@ -140,7 +133,7 @@ export async function updateItem(req, res) {
       !category &&
       !subcategory &&
       !location &&
-      !dateLost &&
+      !date &&
       !description &&
       !itemImage
     ) {
@@ -153,7 +146,7 @@ export async function updateItem(req, res) {
     if (category) item.category = category;
     if (subcategory) item.subcategory = subcategory;
     if (location) item.location = location;
-    if (dateLost) item.dateLost = dateLost;
+    if (date) item.date = date;
     if (description) item.description = description;
 
     if (itemImage) {

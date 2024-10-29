@@ -5,7 +5,6 @@ import api from './routes/router.js';
 import userRouter from './routes/user.js';
 import adminRouter from './routes/admin.js';
 import database from './config/db.js';
-import logger from './utils/logger.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 import methodNotAllowed from './middleware/allowedMethod.js';
