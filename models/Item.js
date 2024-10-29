@@ -4,7 +4,7 @@ const Schema = mongoose.Schema;
 const ItemSchema = new Schema({
   type: { type: String, enum: ['lost', 'found'], required: true },
   itemName: { type: String, required: true },
-  dateLost: { type: Date, required: true },
+  date: { type: Date, required: true },
   location: { type: String, required: true },
   category: { type: String, required: true },
   subcategory: { type: String, required: true },

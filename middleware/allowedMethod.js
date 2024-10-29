@@ -1,14 +1,19 @@
 const allowedMethodsMap = {
   '/': ['GET'],
+  '/api': ['GET'],
   '/api/status': ['GET'],
   '/api/register': ['POST'],
   '/api/login': ['POST'],
   '/api/refresh': ['POST'],
+
+  //user routes
   '/api/user': ['GET'],
   '/api/user/profile': ['GET', 'PUT'],
   '/api/user/items': ['GET'],
   '/api/user/item': ['POST'],
   '/api/user/item/:id': ['GET', 'PUT', 'DELETE'],
+
+  //admin routes
   '/api/admin': ['GET'],
   '/api/admin/users': ['GET'],
   '/api/admin/user/:id': ['GET', 'DELETE'],
