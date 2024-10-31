@@ -57,21 +57,36 @@ export async function getItem(req, res) {
 }
 
 export async function reportItem(req, res) {
-  const { type, itemName, category, subcategory, location, date, description } =
-    req.body || {};
-
   try {
+    const {
+      type,
+      itemName,
+      category,
+      subcategory,
+      location,
+      date,
+      description,
+      ...otherFields
+    } = req.body || {};
+
+    // Required field validation
     if (
-      (!type,
-      !itemName,
-      !category,
-      !subcategory,
-      !location,
-      !date,
-      !description)
+      !type ||
+      !itemName ||
+      !category ||
+      !subcategory ||
+      !location ||
+      !date ||
+      !description
     ) {
-      return res.status(400).json({ message: 'All fields are required!' });
+      return res.status(400).json({ message: 'Required fields are missing!' });
     }
+
+    // Validate fields
+    if (!validateFields(otherFields)) {
+      return res.status(400).json({ message: 'Invalid fields in request.' });
+    }
+
     const userId = req.user.id;
     const user = await User.findById(userId);
 
@@ -101,16 +116,14 @@ export async function reportItem(req, res) {
       description,
       reported_by: { userName: user.firstName, userId: user._id },
       itemImage: imageName,
+      ...otherFields,
     });
 
     await newItem.save();
 
-    const matches = await findMatches(newItem);
-    console.log('Matches found:', matches);
     return res.status(201).json({ message: 'Item created!' });
   } catch (error) {
-    console.log(error);
-    console.error('Reporting lost item Error:', error.message);
+    console.error('Error reporting item:', error);
     return res.status(500).json({ message: 'Server error' });
   }
 }
@@ -122,15 +135,22 @@ export async function updateItem(req, res) {
     return res.status(400).json({ message: 'Invalid item ID format.' });
   }
 
-  const { itemName, category, subcategory, location, date, description } =
-    req.body || {};
-  const itemImage = req.file;
-
   try {
     const item = await Item.findById(itemId);
     if (!item) {
       return res.status(404).json({ message: 'Item not found!' });
     }
+
+    const {
+      itemName,
+      category,
+      subcategory,
+      location,
+      date,
+      description,
+      ...otherFields
+    } = req.body || {};
+    const itemImage = req.file;
 
     if (
       !itemName &&
@@ -139,11 +159,13 @@ export async function updateItem(req, res) {
       !location &&
       !date &&
       !description &&
-      !itemImage
+      !Object.keys(otherFields).length
     ) {
-      return res
-        .status(400)
-        .json({ message: 'At least one field is required!' });
+      return res.status(400).json({ message: 'No fields provided to update.' });
+    }
+
+    if (!validateFields(otherFields)) {
+      return res.status(400).json({ message: 'Invalid fields in request.' });
     }
 
     if (itemName) item.itemName = itemName;
@@ -152,6 +174,10 @@ export async function updateItem(req, res) {
     if (location) item.location = location;
     if (date) item.date = date;
     if (description) item.description = description;
+
+    if (otherFields) {
+      Object.assign(item, otherFields);
+    }
 
     if (itemImage) {
       try {
@@ -231,4 +257,29 @@ export async function matchItem(req, res) {
 
 function validateID(id) {
   return mongoose.isValidObjectId(id);
+}
+
+// Function to validate the fields in the request
+function validateFields(fields) {
+  const validFields = [
+    'brand',
+    'model',
+    'color',
+    'keyType',
+    'numberOfKeys',
+    'idType',
+    'issuingAuthority',
+    'expirationDate',
+    'passportCountry',
+    'creditCardIssuer',
+    'lastFourDigits',
+    'bookTitle',
+    'author',
+    'isbn',
+    'documentType',
+    'createdAt',
+    'updatedAt',
+    'status',
+  ];
+  return Object.keys(fields).every((field) => validFields.includes(field));
 }
