@@ -10,6 +10,7 @@ import {
   getItem,
   updateItem,
   deleteItem,
+  matchItem,
 } from '../controllers/itemController.js';
 
 const userRouter = express.Router();
@@ -49,5 +50,7 @@ userRouter.put(
 );
 
 userRouter.delete('/item/:id', authJWT, authorizeUser, deleteItem);
+
+userRouter.get('/item/:id/matches', authJWT, authorizeUser, matchItem);
 
 export default userRouter;

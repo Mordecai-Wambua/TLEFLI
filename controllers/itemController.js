@@ -5,6 +5,7 @@ import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
+import { findMatches } from './matching.js';
 const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 
 export async function getItems(req, res) {
@@ -103,6 +104,9 @@ export async function reportItem(req, res) {
     });
 
     await newItem.save();
+
+    const matches = await findMatches(newItem);
+    console.log('Matches found:', matches);
     return res.status(201).json({ message: 'Item created!' });
   } catch (error) {
     console.log(error);
@@ -188,6 +192,39 @@ export async function deleteItem(req, res) {
     return res.status(200).json({ message: 'Item deleted' });
   } catch (error) {
     console.error('Delete Item Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function matchItem(req, res) {
+  const itemId = req.params.id;
+
+  if (!validateID(itemId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
+  try {
+    const item = await Item.findById(itemId);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found!' });
+    }
+
+    const matches = await findMatches(item);
+    if (!matches || matches.length === 0) {
+      return res.status(404).json({ message: 'No matches found!' });
+    }
+
+    const matchData = await Promise.all(
+      matches.map(async (match) => {
+        const itemData = match.item.toObject();
+        itemData.itemImage = await getFile(item.itemImage);
+        itemData.matchScore = match.score;
+        return { item: itemData };
+      })
+    );
+    return res.status(200).json({ matchData });
+  } catch (error) {
+    console.error('Match Item Error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 }
