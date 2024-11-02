@@ -30,7 +30,6 @@ export async function updateProfile(req, res) {
   const { firstName, lastName, email, phone } = req.body || {};
   const profilePhoto = req.file;
 
-  console.log('Profile update request:', req.body, req.file);
   try {
     if (!req.user || !req.user.id) {
       return res.status(401).json({ message: 'Unauthorized access!' });
@@ -48,6 +47,10 @@ export async function updateProfile(req, res) {
         .status(400)
         .json({ message: 'At least one field is required!' });
     }
+
+    console.log(
+      `Profile update request for:\n name: ${user.firstName} ${user.lastName}\n id: ${user._id}:`
+    );
 
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;

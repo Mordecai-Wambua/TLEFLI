@@ -95,11 +95,9 @@ export async function reportItem(req, res) {
     const imageName = randomNameGenerator();
 
     if (req.file) {
-      console.log('User uploaded an item photo');
       photoData = req.file.buffer;
       contentType = req.file.mimetype;
     } else {
-      console.log('No file uploaded, using default item photo');
       photoData = fs.readFileSync(defaultItemPhotoPath);
       contentType = 'image/jpeg';
     }

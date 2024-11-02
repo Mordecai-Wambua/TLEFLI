@@ -31,11 +31,9 @@ export async function register(req, res) {
     const imageName = randomNameGenerator();
 
     if (req.file) {
-      console.log('User uploaded profile photo');
       photoData = req.file.buffer;
       contentType = req.file.mimetype;
     } else {
-      console.log('No file uploaded, using default profile photo');
       photoData = fs.readFileSync(defaultProfilePhotoPath);
       contentType = 'image/jpeg';
     }

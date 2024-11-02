@@ -3,7 +3,9 @@ import { getFile } from '../utils/bucket.js';
 
 export async function getLostItems(req, res) {
   try {
-    const lostItems = await Item.find({ type: 'lost' }).select('-__v');
+    const lostItems = await Item.find({ type: 'lost' }).select(
+      '-__v -reported_by -type'
+    );
 
     if (!lostItems || lostItems.length === 0) {
       return res.status(404).json({ message: 'No lost items found!' });
@@ -26,7 +28,9 @@ export async function getLostItems(req, res) {
 
 export async function getFoundItems(req, res) {
   try {
-    const foundItems = await Item.find({ type: 'found' }).select('-__v');
+    const foundItems = await Item.find({ type: 'found' }).select(
+      '-__v -reported_by -type'
+    );
 
     if (!foundItems || foundItems.length === 0) {
       return res.status(404).json({ message: 'No found items reported!' });
