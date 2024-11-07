@@ -241,7 +241,7 @@ export async function matchItem(req, res) {
     const matchData = await Promise.all(
       matches.map(async (match) => {
         const itemData = match.item.toObject();
-        itemData.itemImage = await getFile(match.itemImage);
+        itemData.itemImage = await getFile(itemData.itemImage);
         itemData.matchScore = match.score;
         return { item: itemData };
       })
