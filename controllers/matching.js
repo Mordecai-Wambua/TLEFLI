@@ -73,3 +73,41 @@ export async function findMatches(newItem) {
     throw new Error('Could not retrieve potential matches at this time.');
   }
 }
+
+export async function undoMatches(newItem) {
+  const oppositeType = newItem.type === 'lost' ? 'found' : 'lost';
+  try {
+    const potentialMatches = await Item.find({
+      type: oppositeType,
+      category: newItem.category,
+      subcategory: newItem.subcategory,
+    }).select('-__v -reported_by');
+
+    const matches = potentialMatches
+      .map((item) => ({
+        item,
+        score: calculateMatchScore(newItem, item),
+      }))
+      .filter((match) => match.score >= 80);
+
+    for (const match of matches) {
+      if (match.item.status !== 'Registered Object') {
+        try {
+          await Item.updateOne(
+            { _id: match.item._id },
+            { $set: { status: 'Registered Object' } }
+          );
+          console.log(`Updated status for item: ${match.item._id}`);
+        } catch (updateError) {
+          console.error(
+            `Error updating status for match ${match.item._id}:`,
+            updateError
+          );
+        }
+      }
+    }
+  } catch (fetchError) {
+    console.error('Error fetching potential matches:', fetchError);
+    throw new Error('Could not retrieve potential matches at this time.');
+  }
+}

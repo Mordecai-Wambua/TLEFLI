@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Item from '../models/Item.js';
 import { getFile, deleteFile } from '../utils/bucket.js';
+import { undoMatches } from './matching.js';
 
 export async function userList(req, res) {
   try {
@@ -63,6 +64,7 @@ export async function itemDelete(req, res) {
     }
 
     await deleteFile(item.itemImage);
+    await undoMatches(item);
     await Item.findByIdAndDelete(itemId);
     return res.status(200).json({ message: 'Item deleted!' });
   } catch (error) {
@@ -115,6 +117,7 @@ export async function deleteUser(req, res) {
     for (const item of items) {
       console.log('Deleting item:', item._id);
       await deleteFile(item.itemImage);
+      await undoMatches(item);
       await Item.findByIdAndDelete(item._id);
     }
 

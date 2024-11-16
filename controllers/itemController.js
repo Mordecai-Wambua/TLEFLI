@@ -5,7 +5,7 @@ import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
-import { findMatches } from './matching.js';
+import { findMatches, undoMatches } from './matching.js';
 const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 
 export async function getItems(req, res) {
@@ -212,6 +212,7 @@ export async function deleteItem(req, res) {
     }
 
     await deleteFile(item.itemImage);
+    await undoMatches(item);
     await Item.findByIdAndDelete(itemId);
     return res.status(200).json({ message: 'Item deleted' });
   } catch (error) {
