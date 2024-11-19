@@ -239,6 +239,11 @@ export async function matchItem(req, res) {
       return res.status(404).json({ message: 'No matches found!' });
     }
 
+    await Item.updateOne(
+      { _id: item._id },
+      { $set: { status: 'Authentication In Progress' } }
+    )
+
     const matchData = await Promise.all(
       matches.map(async (match) => {
         const itemData = match.item.toObject();
