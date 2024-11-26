@@ -88,6 +88,26 @@ export async function reportItem(req, res) {
     }
 
     const userId = req.user.id;
+
+    const query = {
+      type,
+      itemName,
+      category,
+      subcategory,
+      location,
+      description,
+      ...otherFields,
+      'reported_by.userId': userId,
+    };
+
+    const existingItem = await Item.findOne(query);
+
+    if (existingItem) {
+      return res
+        .status(409)
+        .json({ message: 'Item already reported by you!' });
+    }
+
     const user = await User.findById(userId);
 
     let photoData;
