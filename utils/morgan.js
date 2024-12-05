@@ -3,6 +3,15 @@ import morgan from 'morgan';
 
 // Custom token for extracting IP
 morgan.token('ip', (req) => {
+  let ip = req.headers['x-forwarded-for'] ||
+    req.socket.remoteAddress;
+
+  if (ip && ip.indexOf(',') !== -1) {
+      ip = ip.split(',')[0];  // Get the first IP from the X-Forwarded-For header
+  }
+  return ip === '::1' ? '127.0.0.1' : ip;
+});
+morgan.token('ip', (req) => {
   const ip =
     req.headers['x-forwarded-for'] ||
     req.connection.remoteAddress ||
