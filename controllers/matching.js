@@ -1,4 +1,4 @@
-import Item from '../models/Item.js';
+import Item from "../models/Item.js";
 
 function calculateMatchScore(item1, item2) {
   let score = 0;
@@ -25,8 +25,8 @@ function calculateMatchScore(item1, item2) {
 
   // Description similarity (simplified)
   if (item1.description && item2.description) {
-    const words1 = item1.description.toLowerCase().split(' ');
-    const words2 = item2.description.toLowerCase().split(' ');
+    const words1 = item1.description.toLowerCase().split(" ");
+    const words2 = item2.description.toLowerCase().split(" ");
     const commonWords = words1.filter((word) => words2.includes(word));
     score += Math.min(commonWords.length * 2, 20); // Max 20 points for description
   }
@@ -35,13 +35,13 @@ function calculateMatchScore(item1, item2) {
 }
 
 export async function findMatches(newItem) {
-  const oppositeType = newItem.type === 'lost' ? 'found' : 'lost';
+  const oppositeType = newItem.type === "lost" ? "found" : "lost";
   try {
     const potentialMatches = await Item.find({
       type: oppositeType,
       category: newItem.category,
       subcategory: newItem.subcategory,
-    }).select('-__v -reported_by');
+    }).select("-__v -reported_by -security");
 
     const matches = potentialMatches
       .map((item) => ({
@@ -51,11 +51,11 @@ export async function findMatches(newItem) {
       .filter((match) => match.score >= 80);
 
     for (const match of matches) {
-      if (match.item.status !== 'Authentication In Progress') {
+      if (match.item.status == "Registered Object") {
         try {
           await Item.updateOne(
             { _id: match.item._id },
-            { $set: { status: 'Authentication In Progress' } }
+            { $set: { status: "Authentication In Progress" } }
           );
           console.log(`Updated status for item: ${match.item._id}`);
         } catch (updateError) {
@@ -67,21 +67,31 @@ export async function findMatches(newItem) {
       }
     }
 
-    return matches;
+    const updatedMatches = await Item.find({
+      _id: { $in: matches.map((match) => match.item._id) },
+    }).select("-__v -reported_by -security");
+
+    // Return the updated matches with their current status
+    return updatedMatches.map((item) => ({
+      item,
+      score: matches.find(
+        (match) => match.item._id.toString() === item._id.toString()
+      ).score,
+    }));
   } catch (fetchError) {
-    console.error('Error fetching potential matches:', fetchError);
-    throw new Error('Could not retrieve potential matches at this time.');
+    console.error("Error fetching potential matches:", fetchError);
+    throw new Error("Could not retrieve potential matches at this time.");
   }
 }
 
 export async function undoMatches(newItem) {
-  const oppositeType = newItem.type === 'lost' ? 'found' : 'lost';
+  const oppositeType = newItem.type === "lost" ? "found" : "lost";
   try {
     const potentialMatches = await Item.find({
       type: oppositeType,
       category: newItem.category,
       subcategory: newItem.subcategory,
-    }).select('-__v -reported_by');
+    }).select("-__v -reported_by");
 
     const matches = potentialMatches
       .map((item) => ({
@@ -91,11 +101,11 @@ export async function undoMatches(newItem) {
       .filter((match) => match.score >= 80);
 
     for (const match of matches) {
-      if (match.item.status !== 'Registered Object') {
+      if (match.item.status !== "Registered Object") {
         try {
           await Item.updateOne(
             { _id: match.item._id },
-            { $set: { status: 'Registered Object' } }
+            { $set: { status: "Registered Object" } }
           );
           console.log(`Updated status for item: ${match.item._id}`);
         } catch (updateError) {
@@ -107,7 +117,7 @@ export async function undoMatches(newItem) {
       }
     }
   } catch (fetchError) {
-    console.error('Error fetching potential matches:', fetchError);
-    throw new Error('Could not retrieve potential matches at this time.');
+    console.error("Error fetching potential matches:", fetchError);
+    throw new Error("Could not retrieve potential matches at this time.");
   }
 }

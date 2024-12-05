@@ -81,7 +81,16 @@ export async function login(req, res) {
     const accessToken = generateToken(user);
     const refreshToken = generateRefreshToken(user);
 
-    return res.status(200).json({ accessToken, refreshToken });
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+    }
+
+    return res
+      .status(200)
+      .cookie('accessToken', accessToken, options)
+      .cookie('refreshToken', refreshToken, options)
+      .json({ message: 'Login successful!', accessToken, refreshToken});
   } catch (error) {
     console.error('Login Error:', error);
     res.status(500).json({ message: 'Server error' });

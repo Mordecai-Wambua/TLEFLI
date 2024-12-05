@@ -1,31 +1,35 @@
-import winston from 'winston';
-import 'winston-daily-rotate-file';
+import { createLogger, format, transports } from "winston";
+import "winston-daily-rotate-file";
 
-const logLevel = process.env.NODE_ENV === 'production' ? 'info' : 'debug';
+const { combine, timestamp, json, printf} = format;
 
-const logger = winston.createLogger({
+const logLevel = process.env.NODE_ENV === "production" ? "info" : "debug";
+
+// Custom format to ensure flat structure
+const customFormat = printf(({ level, message, timestamp, ...meta }) => {
+  const logObject = {
+    level,
+    ...message,
+    timestamp,
+    ...meta,
+  };
+  return JSON.stringify(logObject);
+});
+
+const logger = createLogger({
   level: logLevel,
-  format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }), // Custom date format
-    winston.format.printf(({ timestamp, level, message }) => {
-      return `[tlefli] [${timestamp}] ${level}: ${message}`;
-    })
+  format: combine(
+    timestamp({ format: "YYYY-MM-DDTHH:mm:ss.SSSZ" }),
+    json(),
+    customFormat
   ),
   transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.printf(({ timestamp, level, message }) => {
-          return `${level}: ${message}`;
-        })
-      ),
-      silent: process.env.NODE_ENV === 'production',
-    }),
-    new winston.transports.DailyRotateFile({
-      filename: 'logs/application-%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      maxSize: '20m',
-      maxFiles: '14d',
+    new transports.Console(),
+    new transports.DailyRotateFile({
+      filename: "logs/application-%DATE%.log",
+      datePattern: "YYYY-MM-DD",
+      maxSize: "20m",
+      maxFiles: "100d",
       zippedArchive: true,
     }),
   ],

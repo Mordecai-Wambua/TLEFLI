@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
 import { findMatches, undoMatches } from './matching.js';
+import {verifySecurityAnswer} from '../utils/nlp.js'
 const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 
 export async function getItems(req, res) {
@@ -279,6 +280,79 @@ export async function matchItem(req, res) {
   }
 }
 
+export async function verifyMatchQuestion(req, res) {
+  const matchId = req.params.mid;
+
+  if (!validateID(matchId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
+  try {
+    const item = await Item.findById(matchId);
+    
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found!' });
+    }
+
+    if (!item.security || !item.security.question) {
+      return res.status(400).json({ message: 'Security question not available.' });
+    }
+
+    const securityQuestion = item.security.question;
+    return res.status(200).json({ securityQuestion });
+
+  } catch (error) {
+    console.error('Item Verification Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
+export async function verifyMatchAnswer(req, res) {
+  const itemId = req.params.id;
+  const matchId = req.params.mid;
+  const answer = req.body.answer;
+
+  if (!validateID(matchId)) {
+    return res.status(400).json({ message: 'Invalid item ID format.' });
+  }
+
+  try {
+    const matchedItem = await Item.findById(matchId);
+    const item = await Item.findById(itemId);
+    if (!matchedItem || !item) {
+      return res.status(404).json({ message: 'Item not found!' });
+    }
+
+    if (!matchedItem.security || !matchedItem.security.answer) {
+      return res.status(400).json({ message: 'Security answer not available.' });
+    }
+    const securityAnswer = matchedItem.security.answer;
+    const similarity = await verifySecurityAnswer(answer, securityAnswer)
+    if (similarity) {
+      if (matchedItem.status !== 'Authentication Verified' || matchedItem.status !== 'Return In Progress' || matchedItem.status !== 'Object Returned') {
+        try {
+          await Item.updateMany(
+            { _id: { $in: [matchedItem._id, item._id] } },
+            { $set: { status: 'Authentication Verified' } }
+          );
+          
+          console.log();
+        } catch (updateError) {
+          console.error(
+            `Error updating status for match ${matchedItem._id}:`,
+            updateError
+          );
+        }
+      }
+      return res.status(200).json({ message: "Successfully verified" });      
+    }
+    return res.status(200).json({ message: "Failed verification" });
+  } catch (error) {
+    console.error('Item VerifyMatchAnswer Error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+}
+
 function validateID(id) {
   return mongoose.isValidObjectId(id);
 }
@@ -286,6 +360,15 @@ function validateID(id) {
 // Function to validate the fields in the request
 function validateFields(fields) {
   const validFields = [
+    'type',
+    'itemName',
+    'date',
+    'location',
+    'category',
+    'subcategory',
+    'description',
+    'security.question',
+    'security.answer',
     'brand',
     'model',
     'color',
@@ -305,5 +388,22 @@ function validateFields(fields) {
     'updatedAt',
     'status',
   ];
-  return Object.keys(fields).every((field) => validFields.includes(field));
-}
+
+  // Helper function to check nested fields
+  function checkNestedFields(fields, prefix = '') {
+    return Object.keys(fields).every((field) => {
+      const fullFieldName = prefix ? `${prefix}.${field}` : field;
+
+      // If the value is an object, recurse through it
+      if (typeof fields[field] === 'object' && fields[field] !== null) {
+        return checkNestedFields(fields[field], fullFieldName);
+      }
+
+      // Check if the field exists in the valid fields list
+      return validFields.includes(fullFieldName);
+    });
+  }
+
+  // Start validating from the top-level fields
+  return checkNestedFields(fields);
+} 

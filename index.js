@@ -8,7 +8,8 @@ import database from './config/db.js';
 import notFound from './middleware/notFound.js';
 import errorHandler from './middleware/errorHandler.js';
 import methodNotAllowed from './middleware/allowedMethod.js';
-import requestLogger from './middleware/loggerMiddleware.js';
+import morgan from './utils/morgan.js';
+
 
 dotenv.config();
 
@@ -16,7 +17,9 @@ const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cors());
-app.use(requestLogger);
+app.use(morgan);
+app.set('trust proxy', true);
+
 
 // Routes
 app.get('/', (req, res) => {

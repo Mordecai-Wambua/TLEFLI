@@ -13,6 +13,10 @@ const ItemSchema = new Schema({
     userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   },
   itemImage: { type: String, required: true },
+  security: {
+    question: {type: String},
+    answer: {type: String}
+  },
 
   brand: { type: String },
   model: { type: String },

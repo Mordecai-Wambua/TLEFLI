@@ -11,6 +11,8 @@ import {
   updateItem,
   deleteItem,
   matchItem,
+  verifyMatchQuestion,
+  verifyMatchAnswer,
 } from '../controllers/itemController.js';
 
 const userRouter = express.Router();
@@ -52,5 +54,9 @@ userRouter.put(
 userRouter.delete('/item/:id', authJWT, authorizeUser, deleteItem);
 
 userRouter.get('/item/:id/matches', authJWT, authorizeUser, matchItem);
+
+userRouter.get('/item/:id/matches/:mid', authJWT, authorizeUser, verifyMatchQuestion);
+
+userRouter.post('/item/:id/matches/:mid',express.json(), authJWT, authorizeUser, verifyMatchAnswer);
 
 export default userRouter;
