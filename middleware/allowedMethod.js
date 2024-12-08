@@ -13,6 +13,7 @@ const allowedMethodsMap = {
   '/api/user/item': ['POST'],
   '/api/user/item/:id': ['GET', 'PUT', 'DELETE'],
   '/api/user/item/:id/matches': ['GET'],
+  '/api/user/item/:id/matches/:mid': ['GET', 'POST'],
 
   //admin routes
   '/api/admin': ['GET'],

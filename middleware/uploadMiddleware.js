@@ -1,5 +1,6 @@
 import multer from 'multer';
 import configureMulter from '../utils/upload.js';
+import { ApiError } from '../utils/ApiError.js';
 
 export default function uploadMiddleware(fieldName) {
   return (req, res, next) => {
@@ -7,12 +8,10 @@ export default function uploadMiddleware(fieldName) {
     upload(req, res, (err) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return res
-            .status(400)
-            .json({ message: 'File size exceeds the 5MB limit' });
+          return next(new ApiError(400, 'File size exceeds the 5MB limit'));
         }
       } else if (err) {
-        return res.status(400).json({ message: err.message });
+        return next(new ApiError(400, err.message));
       }
       next();
     });

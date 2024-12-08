@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Item from '../models/Item.js';
 import { getFile, deleteFile } from '../utils/bucket.js';
-import { undoMatches } from './matching.js';
+import { undoMatches } from '../utils/matching.js';
 
 export async function userList(req, res) {
   try {
@@ -29,7 +29,7 @@ export async function userList(req, res) {
 
 export async function itemList(req, res) {
   try {
-    const lostItems = await Item.find({}).select('-__v');
+    const lostItems = await Item.find({}).select('-__v -security');
 
     if (!lostItems || lostItems.length === 0) {
       return res.status(404).json({ message: 'No items found!' });

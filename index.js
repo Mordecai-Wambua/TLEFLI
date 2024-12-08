@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import api from './routes/router.js';
 import userRouter from './routes/user.js';
 import adminRouter from './routes/admin.js';
@@ -10,16 +11,17 @@ import errorHandler from './middleware/errorHandler.js';
 import methodNotAllowed from './middleware/allowedMethod.js';
 import morgan from './utils/morgan.js';
 
-
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 const app = express();
 
 app.use(cors());
+app.use(express.json({ limit: '16kb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+app.use(cookieParser());
 app.use(morgan);
 app.set('trust proxy', true);
-
 
 // Routes
 app.get('/', (req, res) => {

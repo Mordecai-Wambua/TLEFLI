@@ -1,18 +1,17 @@
 // Verify generated JWT
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import { ApiError } from '../utils/ApiError.js';
 
 dotenv.config();
 
 const JWT_SECRET = process.env.JWT_KEY;
 
-export const authJWT = (req, res, next) => {
-  const token = req.header('Authorization')?.split(' ')[1];
-
+export const authJWT = (req, _, next) => {
+  const token =
+    req.cookies?.accessToken || req.header('Authorization')?.split(' ')[1];
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: 'Access denied. No token provided.' });
+    throw new ApiError(401, 'Access denied. No token provided.');
   }
 
   try {
@@ -20,6 +19,6 @@ export const authJWT = (req, res, next) => {
     req.user = decoded;
     next();
   } catch (error) {
-    res.status(403).json({ message: 'Invalid token' });
+    throw new ApiError(401, error.message);
   }
 };

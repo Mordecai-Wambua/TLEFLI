@@ -5,46 +5,68 @@ import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
-import { findMatches, undoMatches } from './matching.js';
-import {verifySecurityAnswer} from '../utils/nlp.js'
+import { findMatches, undoMatches } from '../utils/matching.js';
+import { verifySecurityAnswer } from '../utils/nlp.js';
+import { ApiError } from '../utils/ApiError.js';
 const defaultItemPhotoPath = path.resolve('utils', 'item.jpg');
 
-export async function getItems(req, res) {
+export async function getItems(req, res, next) {
   try {
     const userId = req.user.id;
-    const lostItems = await Item.find({ 'reported_by.userId': userId }).select(
-      '-__v -reported_by'
-    );
+    const { page = 1, limit = 10 } = req.query;
+
+    // Directly apply pagination and sort
+    const lostItems = await Item.find({ 'reported_by.userId': userId })
+      .select('-__v -reported_by')
+      .sort({ _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
 
     if (!lostItems || lostItems.length === 0) {
-      return res.status(404).json({ message: 'No items found!' });
+      return next(new ApiError(404, 'No items found!'));
     }
 
+    // Fetch images in parallel
     const items = await Promise.all(
       lostItems.map(async (item) => {
         const itemData = item.toObject();
-        itemData.itemImage = await getFile(item.itemImage); // Await getFile here
+        // Retrieve the item image in parallel
+        itemData.itemImage = await getFile(item.itemImage);
         return itemData;
       })
     );
 
-    return res.status(200).json({ items });
+    // Retrieve total items count
+    const totalItems = await Item.countDocuments({
+      'reported_by.userId': userId,
+    });
+
+    const totalPages = Math.ceil(totalItems / limit);
+
+    return res.status(200).json({
+      items,
+      pagination: {
+        totalItems,
+        totalPages,
+        currentPage: page,
+        pageSize: limit,
+      },
+    });
   } catch (error) {
-    console.error('Error fetching items:', error);
-    return res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function getItem(req, res) {
+export async function getItem(req, res, next) {
   const itemId = req.params.id;
   if (!validateID(itemId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, 'Invalid item ID format.'));
   }
 
   try {
     const item = await Item.findById(itemId).select('-__v -reported_by');
     if (!item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, 'Item not found!'));
     }
 
     const itemData = item.toObject();
@@ -52,12 +74,11 @@ export async function getItem(req, res) {
 
     return res.status(200).json({ item: itemData });
   } catch (error) {
-    console.error('Error fetching lost item:', error);
-    return res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function reportItem(req, res) {
+export async function reportItem(req, res, next) {
   try {
     const {
       type,
@@ -80,17 +101,17 @@ export async function reportItem(req, res) {
       !date ||
       !description
     ) {
-      return res.status(400).json({ message: 'Required fields are missing!' });
+      return next(new ApiError(400, 'Required fields are missing!'));
     }
 
     // Validate fields
     if (!validateFields(otherFields)) {
-      return res.status(400).json({ message: 'Invalid fields in request.' });
+      return next(new ApiError(400, 'Invalid fields in request.'));
     }
 
     const userId = req.user.id;
 
-    const query = {
+    const existingItem = await Item.findOne({
       type,
       itemName,
       category,
@@ -99,30 +120,18 @@ export async function reportItem(req, res) {
       description,
       ...otherFields,
       'reported_by.userId': userId,
-    };
-
-    const existingItem = await Item.findOne(query);
+    });
 
     if (existingItem) {
-      return res
-        .status(409)
-        .json({ message: 'Item already reported by you!' });
+      return next(new ApiError(409, 'Item already reported by you!'));
     }
 
     const user = await User.findById(userId);
-
-    let photoData;
-    let contentType;
     const imageName = randomNameGenerator();
-
-    if (req.file) {
-      photoData = req.file.buffer;
-      contentType = req.file.mimetype;
-    } else {
-      photoData = fs.readFileSync(defaultItemPhotoPath);
-      contentType = 'image/jpeg';
-    }
-
+    const photoData = req.file
+      ? req.file.buffer
+      : fs.readFileSync(defaultItemPhotoPath);
+    const contentType = req.file ? req.file.mimetype : 'image/jpeg';
     await uploadFile({ photoData, contentType }, imageName);
 
     const newItem = new Item({
@@ -139,25 +148,23 @@ export async function reportItem(req, res) {
     });
 
     await newItem.save();
-
     return res.status(201).json({ message: 'Item created!' });
   } catch (error) {
-    console.error('Error reporting item:', error);
-    return res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function updateItem(req, res) {
+export async function updateItem(req, res, next) {
   const itemId = req.params.id;
 
   if (!validateID(itemId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, 'Invalid item ID format.'));
   }
 
   try {
     const item = await Item.findById(itemId);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, 'Item not found!'));
     }
 
     const {
@@ -180,56 +187,50 @@ export async function updateItem(req, res) {
       !description &&
       !Object.keys(otherFields).length
     ) {
-      return res.status(400).json({ message: 'No fields provided to update.' });
+      return next(new ApiError(400, 'No fields provided to update.'));
     }
 
     if (!validateFields(otherFields)) {
-      return res.status(400).json({ message: 'Invalid fields in request.' });
+      return next(new ApiError(400, 'Invalid fields in request.'));
     }
 
-    if (itemName) item.itemName = itemName;
-    if (category) item.category = category;
-    if (subcategory) item.subcategory = subcategory;
-    if (location) item.location = location;
-    if (date) item.date = date;
-    if (description) item.description = description;
-
-    if (otherFields) {
-      Object.assign(item, otherFields);
-    }
+    Object.assign(item, {
+      itemName,
+      category,
+      subcategory,
+      location,
+      date,
+      description,
+      ...otherFields,
+    });
 
     if (itemImage) {
-      try {
-        const imageName = item.itemImage;
-        const photoData = itemImage.buffer;
-        const contentType = itemImage.mimetype;
-        await uploadFile({ photoData, contentType }, imageName);
-        item.itemImage = imageName;
-      } catch (uploadError) {
-        console.error('Error uploading the item photo:', uploadError);
-        return res.status(500).json({ message: 'Error uploading item photo' });
-      }
+      const imageName = item.itemImage;
+      await uploadFile(
+        { photoData: itemImage.buffer, contentType: itemImage.mimetype },
+        imageName
+      );
+      item.itemImage = imageName;
     }
 
     await item.save();
     return res.status(200).json({ message: 'Item details updated' });
   } catch (error) {
-    console.error('Update Item details Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function deleteItem(req, res) {
+export async function deleteItem(req, res, next) {
   const itemId = req.params.id;
 
   if (!validateID(itemId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, 'Invalid item ID format.'));
   }
 
   try {
     const item = await Item.findById(itemId);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, 'Item not found!'));
     }
 
     await deleteFile(item.itemImage);
@@ -237,119 +238,118 @@ export async function deleteItem(req, res) {
     await Item.findByIdAndDelete(itemId);
     return res.status(200).json({ message: 'Item deleted' });
   } catch (error) {
-    console.error('Delete Item Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function matchItem(req, res) {
+export async function matchItem(req, res, next) {
   const itemId = req.params.id;
 
   if (!validateID(itemId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, 'Invalid item ID format.'));
   }
 
   try {
     const item = await Item.findById(itemId);
     if (!item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, 'Item not found!'));
     }
 
     const matches = await findMatches(item);
     if (!matches || matches.length === 0) {
-      return res.status(404).json({ message: 'No matches found!' });
+      return next(new ApiError(404, 'No matches found!'));
     }
 
-    await Item.updateOne(
-      { _id: item._id },
-      { $set: { status: 'Authentication In Progress' } }
-    )
+    item.status = 'Authentication In Progress';
+    await item.save();
 
     const matchData = await Promise.all(
-      matches.map(async (match) => {
-        const itemData = match.item.toObject();
-        itemData.itemImage = await getFile(itemData.itemImage);
-        itemData.matchScore = match.score;
-        return { item: itemData };
-      })
+      matches.map(async (match) => ({
+        item: {
+          ...match.item.toObject(),
+          itemImage: await getFile(match.item.itemImage),
+          matchScore: match.score,
+        },
+      }))
     );
     return res.status(200).json({ matchData });
   } catch (error) {
-    console.error('Match Item Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function verifyMatchQuestion(req, res) {
+export async function verifyMatchQuestion(req, res, next) {
   const matchId = req.params.mid;
 
   if (!validateID(matchId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, `Invalid match ID format: ${matchId}.`));
   }
 
   try {
     const item = await Item.findById(matchId);
-    
+
     if (!item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, `Item not found for matchId=${matchId}`));
     }
 
     if (!item.security || !item.security.question) {
-      return res.status(400).json({ message: 'Security question not available.' });
+      return next(
+        new ApiError(
+          400,
+          `Security question not available for matchId=${matchId}`
+        )
+      );
     }
 
     const securityQuestion = item.security.question;
     return res.status(200).json({ securityQuestion });
-
   } catch (error) {
-    console.error('Item Verification Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function verifyMatchAnswer(req, res) {
+export async function verifyMatchAnswer(req, res, next) {
   const itemId = req.params.id;
   const matchId = req.params.mid;
   const answer = req.body.answer;
 
   if (!validateID(matchId)) {
-    return res.status(400).json({ message: 'Invalid item ID format.' });
+    return next(new ApiError(400, 'Invalid match ID format.'));
   }
 
   try {
     const matchedItem = await Item.findById(matchId);
     const item = await Item.findById(itemId);
     if (!matchedItem || !item) {
-      return res.status(404).json({ message: 'Item not found!' });
+      return next(new ApiError(404, 'Item not found!'));
     }
 
     if (!matchedItem.security || !matchedItem.security.answer) {
-      return res.status(400).json({ message: 'Security answer not available.' });
+      return next(
+        new ApiError(
+          400,
+          `Security answer not available for matchId=${matchId}.`
+        )
+      );
     }
     const securityAnswer = matchedItem.security.answer;
-    const similarity = await verifySecurityAnswer(answer, securityAnswer)
+    const similarity = await verifySecurityAnswer(answer, securityAnswer);
     if (similarity) {
-      if (matchedItem.status !== 'Authentication Verified' || matchedItem.status !== 'Return In Progress' || matchedItem.status !== 'Object Returned') {
-        try {
-          await Item.updateMany(
-            { _id: { $in: [matchedItem._id, item._id] } },
-            { $set: { status: 'Authentication Verified' } }
-          );
-          
-          console.log();
-        } catch (updateError) {
-          console.error(
-            `Error updating status for match ${matchedItem._id}:`,
-            updateError
-          );
-        }
+      if (
+        matchedItem.status !== 'Authentication Verified' &&
+        matchedItem.status !== 'Return In Progress' &&
+        matchedItem.status !== 'Object Returned'
+      ) {
+        await Item.updateMany(
+          { _id: { $in: [matchedItem._id, item._id] } },
+          { $set: { status: 'Authentication Verified' } }
+        );
       }
-      return res.status(200).json({ message: "Successfully verified" });      
+      return res.status(200).json({ message: 'Successfully verified' });
     }
-    return res.status(200).json({ message: "Failed verification" });
+    return res.status(200).json({ message: 'Failed verification' });
   } catch (error) {
-    console.error('Item VerifyMatchAnswer Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
@@ -406,4 +406,4 @@ function validateFields(fields) {
 
   // Start validating from the top-level fields
   return checkNestedFields(fields);
-} 
+}

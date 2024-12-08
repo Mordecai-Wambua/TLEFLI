@@ -3,21 +3,11 @@ import morgan from 'morgan';
 
 // Custom token for extracting IP
 morgan.token('ip', (req) => {
-  let ip = req.headers['x-forwarded-for'] ||
-    req.socket.remoteAddress;
+  let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   if (ip && ip.indexOf(',') !== -1) {
-      ip = ip.split(',')[0];  // Get the first IP from the X-Forwarded-For header
+    ip = ip.split(',')[0]; // Get the first IP from the X-Forwarded-For header
   }
-  return ip === '::1' ? '127.0.0.1' : ip;
-});
-morgan.token('ip', (req) => {
-  const ip =
-    req.headers['x-forwarded-for'] ||
-    req.connection.remoteAddress ||
-    req.socket.remoteAddress ||
-    (req.connection.socket ? req.connection.socket.remoteAddress : null);
-
   return ip === '::1' ? '127.0.0.1' : ip;
 });
 
@@ -29,6 +19,7 @@ const morganFormat = ':ip :method :url :status :response-time ms';
 
 // Custom stream to log in structured format
 export default morgan(morganFormat, {
+  skip: (req, res) => res.statusCode >= 400,
   stream: {
     write: (message) => {
       // Parse the `message` into its components

@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { uploadFile } from '../utils/bucket.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
+import { ApiError } from '../utils/ApiError.js';
 
 dotenv.config();
 
@@ -13,17 +14,17 @@ const JWT_SECRET = process.env.JWT_KEY;
 const JWT_REFRESH = process.env.JWT_REFRESH;
 const defaultProfilePhotoPath = path.resolve('utils', 'profile.jpeg');
 
-export async function register(req, res) {
+export async function register(req, res, next) {
   const { firstName, lastName, email, password, phone } = req.body || {};
 
   try {
     if (!(email && password && firstName && lastName && phone)) {
-      return res.status(400).json({ message: 'All input is required!' });
+      throw new ApiError(400, 'All input fields are required!');
     }
 
     const user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: 'User already exists!' });
+      throw new ApiError(409, 'User already exists!');
     }
 
     let photoData;
@@ -56,25 +57,28 @@ export async function register(req, res) {
 
     return res.status(201).json({ message: 'User created!' });
   } catch (error) {
-    console.error('Register Error:', error.message);
-    return res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function login(req, res) {
+export async function login(req, res, next) {
   const { email, password } = req.body;
+
+  if (!(email || password)) {
+    return next(new ApiError(400, 'Email or password is required'));
+  }
 
   try {
     // Find user by email
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials!' });
+      return next(new ApiError(404, 'User does not exist!'));
     }
 
     // Compare passwords using bcrypt
     if (!bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ message: 'Invalid credentials!' });
+      return next(new ApiError(401, 'Invalid credentials!'));
     }
 
     // Generate JWT
@@ -84,26 +88,23 @@ export async function login(req, res) {
     const options = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-    }
+    };
 
     return res
       .status(200)
       .cookie('accessToken', accessToken, options)
       .cookie('refreshToken', refreshToken, options)
-      .json({ message: 'Login successful!', accessToken, refreshToken});
+      .json({ message: 'Login successful!', accessToken, refreshToken });
   } catch (error) {
-    console.error('Login Error:', error);
-    res.status(500).json({ message: 'Server error' });
+    next(error);
   }
 }
 
-export async function refreshToken(req, res) {
+export async function refreshToken(req, res, next) {
   const { token } = req.body;
 
   if (!token) {
-    return res
-      .status(401)
-      .json({ message: 'Access denied. No token provided.' });
+    return next(new ApiError(401, 'Access denied. No token provided.'));
   }
 
   try {
@@ -111,14 +112,13 @@ export async function refreshToken(req, res) {
     const user = await User.findById(decoded.id);
 
     if (!user) {
-      return res.status(404).json({ message: 'User not found!' });
+      return next(new ApiError(404, 'User not found!'));
     }
 
     const accessToken = generateToken(user);
     return res.status(200).json({ accessToken });
   } catch (error) {
-    console.error('Refresh token Error:', error);
-    return res.status(403).json({ message: 'Invalid token' });
+    next(error);
   }
 }
 

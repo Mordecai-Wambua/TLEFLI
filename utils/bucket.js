@@ -36,8 +36,7 @@ export async function uploadFile(file, fileName) {
     const data = await s3.send(command);
     return data;
   } catch (err) {
-    console.error('Error uploading file', err);
-    throw err;
+    throw new ApiError(500, err.message);
   }
 }
 
@@ -51,8 +50,7 @@ export async function deleteFile(fileName) {
     const data = await s3.send(new DeleteObjectCommand(params));
     return data;
   } catch (err) {
-    console.error('Error deleting file', err);
-    throw err;
+    throw new ApiError(500, err.message);
   }
 }
 

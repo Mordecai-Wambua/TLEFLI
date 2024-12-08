@@ -15,9 +15,9 @@ api.get('/status', (req, res) => {
 
 api.post('/register', uploadMiddleware('profilePhoto'), register);
 
-api.post('/login', express.json(), login);
+api.post('/login', login);
 
-api.post('/refresh', express.json(), refreshToken);
+api.post('/refresh', refreshToken);
 
 api.get('/lost-items', getLostItems);
 

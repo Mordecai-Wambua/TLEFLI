@@ -27,7 +27,7 @@ userRouter.put(
   updateProfile
 );
 
-userRouter.get('/', express.json(), authJWT, authorizeUser, (req, res) => {
+userRouter.get('/', authJWT, authorizeUser, (req, res) => {
   return res.status(200).json({ message: 'User Dashboard' });
 });
 
@@ -55,8 +55,18 @@ userRouter.delete('/item/:id', authJWT, authorizeUser, deleteItem);
 
 userRouter.get('/item/:id/matches', authJWT, authorizeUser, matchItem);
 
-userRouter.get('/item/:id/matches/:mid', authJWT, authorizeUser, verifyMatchQuestion);
+userRouter.get(
+  '/item/:id/matches/:mid',
+  authJWT,
+  authorizeUser,
+  verifyMatchQuestion
+);
 
-userRouter.post('/item/:id/matches/:mid',express.json(), authJWT, authorizeUser, verifyMatchAnswer);
+userRouter.post(
+  '/item/:id/matches/:mid',
+  authJWT,
+  authorizeUser,
+  verifyMatchAnswer
+);
 
 export default userRouter;
