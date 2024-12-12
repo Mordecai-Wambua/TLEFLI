@@ -1,4 +1,5 @@
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Upload } from '@aws-sdk/lib-storage';
 import {
   S3Client,
   PutObjectCommand,
@@ -7,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import dotenv from 'dotenv';
 
+import { ApiError } from './ApiError.js';
 dotenv.config();
 
 const BUCKET_NAME = process.env.BUCKET_NAME;
@@ -23,19 +25,30 @@ const s3 = new S3Client({
 });
 
 export async function uploadFile(file, fileName) {
+  const { photoData, contentType } = file;
+
+  // Ensure the photoData is a Buffer
+  const buffer = Buffer.isBuffer(photoData)
+    ? photoData
+    : Buffer.from(photoData);
+
   const params = {
     Bucket: BUCKET_NAME,
     Key: fileName,
-    Body: file.photoData,
-    ContentType: file.contentType,
+    Body: buffer, // Ensure the body is a valid Buffer
+    ContentType: contentType,
   };
 
-  const command = new PutObjectCommand(params);
-
   try {
-    const data = await s3.send(command);
+    // Use Upload for stream-like data (large files)
+    const uploader = new Upload({
+      client: s3,
+      params: params,
+    });
+    const data = await uploader.done(); // Uploads the file and waits for it to complete
     return data;
   } catch (err) {
+    console.error(err);
     throw new ApiError(500, err.message);
   }
 }

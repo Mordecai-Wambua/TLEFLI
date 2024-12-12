@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 const Schema = mongoose.Schema;
 
 const ItemSchema = new Schema({
-  type: { type: String, enum: ['lost', 'found'], required: true },
+  type: { type: String, enum: ['lost', 'found'], required: true, index: true },
   itemName: { type: String, required: true },
   date: { type: Date, required: true },
   location: { type: String, required: true },
@@ -10,12 +10,17 @@ const ItemSchema = new Schema({
   subcategory: { type: String, required: true },
   reported_by: {
     userName: { type: String, required: true },
-    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
   },
   itemImage: { type: String, required: true },
   security: {
-    question: {type: String},
-    answer: {type: String}
+    question: { type: String },
+    answer: { type: String },
   },
 
   brand: { type: String },
@@ -56,6 +61,7 @@ const ItemSchema = new Schema({
       'Object Returned',
     ],
     default: 'Registered Object',
+    index: true,
   },
 });
 

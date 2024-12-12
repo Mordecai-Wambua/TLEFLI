@@ -1,3 +1,6 @@
+import { ApiError } from '../utils/ApiError.js';
+import { match } from 'path-to-regexp';
+
 const allowedMethodsMap = {
   '/': ['GET'],
   '/api': ['GET'],
@@ -5,17 +8,19 @@ const allowedMethodsMap = {
   '/api/register': ['POST'],
   '/api/login': ['POST'],
   '/api/refresh': ['POST'],
+  '/api/forgot-password': ['POST'],
+  '/api/reset-password/:token': ['POST'],
 
-  //user routes
+  // user routes
   '/api/user': ['GET'],
-  '/api/user/profile': ['GET', 'PUT'],
+  '/api/user/profile': ['GET', 'PUT', 'DELETE'],
   '/api/user/items': ['GET'],
   '/api/user/item': ['POST'],
   '/api/user/item/:id': ['GET', 'PUT', 'DELETE'],
   '/api/user/item/:id/matches': ['GET'],
   '/api/user/item/:id/matches/:mid': ['GET', 'POST'],
 
-  //admin routes
+  // admin routes
   '/api/admin': ['GET'],
   '/api/admin/users': ['GET'],
   '/api/admin/user/:id': ['GET', 'DELETE'],
@@ -25,15 +30,21 @@ const allowedMethodsMap = {
 };
 
 function methodNotAllowed(req, res, next) {
-  const allowedMethods = allowedMethodsMap[req.path];
+  const matchedRoute = Object.keys(allowedMethodsMap).find((route) =>
+    match(route, { decode: decodeURIComponent })(req.path)
+  );
 
-  if (allowedMethods && !allowedMethods.includes(req.method)) {
-    res.set('Allow', allowedMethods.join(', '));
-    return res.status(405).send({
-      error: `Method Not Allowed. Allowed methods: ${allowedMethods.join(
-        ', '
-      )}`,
-    });
+  if (matchedRoute) {
+    const allowedMethods = allowedMethodsMap[matchedRoute];
+    if (!allowedMethods.includes(req.method)) {
+      res.set('Allow', allowedMethods.join(', '));
+      return next(
+        new ApiError(
+          405,
+          `Method Not Allowed. Allowed methods: ${allowedMethods.join(', ')}`
+        )
+      );
+    }
   }
 
   next();

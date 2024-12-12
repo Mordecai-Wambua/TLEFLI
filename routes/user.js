@@ -1,6 +1,10 @@
 // Defines routes for user related operations
 import express from 'express';
-import { profile, updateProfile } from '../controllers/userController.js';
+import {
+  profile,
+  updateProfile,
+  deleteProfile,
+} from '../controllers/userController.js';
 import { authJWT } from '../middleware/authMiddleware.js';
 import { authorizeUser } from '../middleware/roleMiddleware.js';
 import uploadMiddleware from '../middleware/uploadMiddleware.js';
@@ -26,6 +30,8 @@ userRouter.put(
   uploadMiddleware('profilePhoto'),
   updateProfile
 );
+
+userRouter.delete('/profile', authJWT, authorizeUser, deleteProfile);
 
 userRouter.get('/', authJWT, authorizeUser, (req, res) => {
   return res.status(200).json({ message: 'User Dashboard' });

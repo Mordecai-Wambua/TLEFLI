@@ -23,7 +23,10 @@ app.use(cookieParser());
 app.use(morgan);
 app.set('trust proxy', true);
 
-// Routes
+// Method not allowed middleware
+app.use(methodNotAllowed);
+
+// Health check route
 app.get('/', (req, res) => {
   res.redirect(301, 'api/status');
 });
@@ -32,9 +35,6 @@ app.get('/', (req, res) => {
 app.use('/api', api);
 app.use('/api/user', userRouter);
 app.use('/api/admin', adminRouter);
-
-// Method not allowed middleware
-app.use(methodNotAllowed);
 
 // Not found middleware
 app.use(notFound);
