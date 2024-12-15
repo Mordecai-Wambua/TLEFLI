@@ -7,6 +7,7 @@ import {
   verifyEmail,
   forgotPassword,
   resetPassword,
+  newVerificationCode,
 } from '../controllers/auth.js';
 import { getLostItems, getFoundItems } from '../controllers/items.js';
 import uploadMiddleware from '../middleware/uploadMiddleware.js';
@@ -28,6 +29,8 @@ api.post('/login', login);
 api.post('/logout', logout);
 
 api.post('/verify-email', verifyEmail);
+
+api.post('/new-verificationcode', newVerificationCode);
 
 api.post('/forgot-password', forgotPassword);
 

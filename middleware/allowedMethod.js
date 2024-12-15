@@ -1,4 +1,4 @@
-import { ApiError } from '../utils/ApiError.js';
+import createError from 'http-errors';
 import { match } from 'path-to-regexp';
 
 const allowedMethodsMap = {
@@ -6,7 +6,10 @@ const allowedMethodsMap = {
   '/api': ['GET'],
   '/api/status': ['GET'],
   '/api/register': ['POST'],
+  '/api/verify-email': ['POST'],
+  '/api/new-verificationcode': ['POST'],
   '/api/login': ['POST'],
+  '/api/logout': ['POST'],
   '/api/refresh': ['POST'],
   '/api/forgot-password': ['POST'],
   '/api/reset-password/:token': ['POST'],
@@ -39,14 +42,13 @@ function methodNotAllowed(req, res, next) {
     if (!allowedMethods.includes(req.method)) {
       res.set('Allow', allowedMethods.join(', '));
       return next(
-        new ApiError(
+        createError(
           405,
           `Method Not Allowed. Allowed methods: ${allowedMethods.join(', ')}`
         )
       );
     }
   }
-
   next();
 }
 

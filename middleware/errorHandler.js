@@ -1,4 +1,5 @@
 import { ApiError } from '../utils/ApiError.js';
+import createError from 'http-errors';
 import logger from '../utils/logger.js';
 
 function ipGet(req) {
@@ -23,15 +24,20 @@ function errorHandler(err, req, res, next) {
     },
   };
 
-  logger.error(logData);
-
   if (err instanceof ApiError) {
+    logger.error(logData);
+    return res.status(err.statusCode).json({
+      error: err.message,
+    });
+  } else if (err instanceof createError.HttpError) {
     return res.status(err.statusCode).json({
       error: err.message,
     });
   } else {
-    return res.status(500).json({ error: err.message });
+    logger.error(logData);
+    return res.status(500).json({
+      error: 'Internal Server Error',
+    });
   }
 }
-
 export default errorHandler;

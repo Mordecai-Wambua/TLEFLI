@@ -1,8 +1,7 @@
-import { ApiError } from '../utils/ApiError.js';
+import createError from 'http-errors';
 
 function notFound(req, res, next) {
-  const error = new ApiError(404, 'Not Found');
-  next(error);
+  return next(createError(404, 'Not Found'));
 }
 
 export default notFound;

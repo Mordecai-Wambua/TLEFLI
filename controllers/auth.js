@@ -68,7 +68,7 @@ export async function register(req, res, next) {
 
     return res.status(201).json({
       success: true,
-      message: 'User created successfully',
+      message: 'User verification code sent to email',
       user: {
         ...user._doc,
         password: undefined,
@@ -108,10 +108,45 @@ export async function verifyEmail(req, res, next) {
       name: user.firstName,
     });
 
-    // await sendWelcomeEmail(user.email, user.firstName);
     res
       .status(200)
-      .json({ success: true, messafe: 'Email verified successfully' });
+      .json({ success: true, message: 'Email verified successfully' });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function newVerificationCode(req, res, next) {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new ApiError(400, 'Email is required'));
+  }
+
+  try {
+    const user = await User.findOne({
+      email,
+      isVerified: false,
+    });
+    if (!user) {
+      return next(new ApiError(404, 'User not found'));
+    }
+
+    const verificationToken = Math.floor(
+      100000 + Math.random() * 900000
+    ).toString();
+    const verificationTokenExpiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    user.verificationToken = verificationToken;
+    user.verificationTokenExpiresAt = verificationTokenExpiresAt;
+    await user.save();
+
+    emailQueue.add({
+      emailType: 'verification',
+      userEmail: email,
+      verificationToken,
+    });
+    res.status(200).json({ success: true, message: 'New code sent' });
   } catch (error) {
     next(error);
   }
@@ -176,7 +211,7 @@ export async function logout(req, res) {
 }
 
 export async function refreshToken(req, res, next) {
-  const { token } = req.body;
+  const token = req.cookies?.refreshToken || req.body?.token;
 
   if (!token) {
     return next(new ApiError(401, 'Access denied. No token provided.'));
@@ -191,7 +226,19 @@ export async function refreshToken(req, res, next) {
     }
 
     const accessToken = generateToken(user);
-    return res.status(200).json({ accessToken });
+    const options = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
+
+    return res
+      .status(200)
+      .cookie('accessToken', accessToken, {
+        ...options,
+        maxAge: 1 * 60 * 60 * 1000,
+      })
+      .json({ accessToken });
   } catch (error) {
     next(error);
   }
