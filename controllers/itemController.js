@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import Item from '../models/Item.js';
 import User from '../models/User.js';
 import { randomNameGenerator } from '../utils/randomNames.js';
+import { fileUploadQueue } from '../utils/queues.js';
 import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
 import { findMatches, undoMatches } from '../utils/matching.js';
 import { verifySecurityAnswer } from '../utils/nlp.js';
@@ -23,18 +24,28 @@ export async function getItems(req, res, next) {
       .limit(Number(limit));
 
     if (!lostItems || lostItems.length === 0) {
-      return next(new ApiError(404, 'No items found!'));
+      return res.status(200).json({ items: lostItems });
     }
 
     // Fetch images in parallel
-    const items = await Promise.all(
-      lostItems.map(async (item) => {
-        const itemData = item.toObject();
-        // Retrieve the item image in parallel
-        itemData.itemImage = await getFile(item.itemImage);
-        return itemData;
-      })
+    const itemImages = await Promise.all(
+      lostItems.map((item) => getFile(item.itemImage).catch((error) => null)) // Handle errors gracefully
     );
+
+    const items = lostItems.map((item, index) => {
+      const itemData = item.toObject();
+      itemData.itemImage = itemImages[index]; // Add profile photo or `null` if failed
+      return itemData;
+    });
+
+    // const items = await Promise.all(
+    //   lostItems.map(async (item) => {
+    //     const itemData = item.toObject();
+    //     // Retrieve the item image in parallel
+    //     itemData.itemImage = await getFile(item.itemImage);
+    //     return itemData;
+    //   })
+    // );
 
     // Retrieve total items count
     const totalItems = await Item.countDocuments({
@@ -109,6 +120,12 @@ export async function reportItem(req, res, next) {
       return next(new ApiError(400, 'Invalid fields in request.'));
     }
 
+    if (type == 'found' && !otherFields.security) {
+      return next(new ApiError(400, 'Security details are missing!'));
+    } else if (type == 'lost' && otherFields.security) {
+      return next(new ApiError(400, 'Security details are not required!'));
+    }
+
     const userId = req.user.id;
 
     const existingItem = await Item.findOne({
@@ -132,7 +149,8 @@ export async function reportItem(req, res, next) {
       ? req.file.buffer
       : fs.readFileSync(defaultItemPhotoPath);
     const contentType = req.file ? req.file.mimetype : 'image/jpeg';
-    await uploadFile({ photoData, contentType }, imageName);
+
+    fileUploadQueue.add({ photoData, contentType, imageName });
 
     const newItem = new Item({
       type,
@@ -185,7 +203,8 @@ export async function updateItem(req, res, next) {
       !location &&
       !date &&
       !description &&
-      !Object.keys(otherFields).length
+      !Object.keys(otherFields).length &&
+      !itemImage
     ) {
       return next(new ApiError(400, 'No fields provided to update.'));
     }
@@ -195,25 +214,23 @@ export async function updateItem(req, res, next) {
     }
 
     Object.assign(item, {
-      itemName,
-      category,
-      subcategory,
-      location,
-      date,
-      description,
+      ...(itemName && { itemName }),
+      ...(category && { category }),
+      ...(subcategory && { subcategory }),
+      ...(location && { location }),
+      ...(date && { date }),
+      ...(description && { description }),
       ...otherFields,
     });
 
     if (itemImage) {
       const imageName = item.itemImage;
-      await uploadFile(
-        { photoData: itemImage.buffer, contentType: itemImage.mimetype },
-        imageName
-      );
-      item.itemImage = imageName;
+      const photoData = itemImage.buffer;
+      const contentType = itemImage.mimetype;
+      fileUploadQueue.add({ photoData, contentType, imageName });
     }
 
-    await item.save();
+    await item.save({ validateModifiedOnly: true });
     return res.status(200).json({ message: 'Item details updated' });
   } catch (error) {
     next(error);
@@ -257,7 +274,7 @@ export async function matchItem(req, res, next) {
 
     const matches = await findMatches(item);
     if (!matches || matches.length === 0) {
-      return next(new ApiError(404, 'No matches found!'));
+      return res.status(200).json({ matches });
     }
 
     item.status = 'Authentication In Progress';

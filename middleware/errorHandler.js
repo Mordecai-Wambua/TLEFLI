@@ -2,7 +2,7 @@ import { ApiError } from '../utils/ApiError.js';
 import createError from 'http-errors';
 import logger from '../utils/logger.js';
 
-function ipGet(req) {
+export function ipGet(req) {
   let ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
 
   if (ip && ip.indexOf(',') !== -1) {
@@ -35,6 +35,7 @@ function errorHandler(err, req, res, next) {
     });
   } else {
     logger.error(logData);
+    console.error(err);
     return res.status(500).json({
       error: 'Internal Server Error',
     });

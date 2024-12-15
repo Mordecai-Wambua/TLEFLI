@@ -15,7 +15,12 @@ const UserSchema = new Schema(
       index: true,
     },
     phone: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'user'], required: true },
+    role: {
+      type: String,
+      enum: ['admin', 'user'],
+      required: true,
+      index: true,
+    },
     password: { type: String, required: true },
     lastLogin: {
       type: Date,

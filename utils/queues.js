@@ -1,5 +1,6 @@
 import Queue from 'bull';
 import Redis from 'ioredis';
+import logger from '../utils/logger.js';
 import { uploadFile } from './bucket.js';
 import { ApiError } from './ApiError.js';
 import {
@@ -52,7 +53,15 @@ fileUploadQueue.process(async (job) => {
   try {
     const { photoData, contentType, imageName } = job.data;
     await uploadFile({ photoData, contentType }, imageName);
-    console.log(`File uploaded successfully: ${imageName}`);
+    const logData = {
+      message: {
+        task: `File uploaded successfully: ${imageName}`,
+        statusCode: 200,
+        success: true,
+      },
+    };
+
+    logger.info(logData);
   } catch (error) {
     console.error(`File upload failed: ${error}`);
     throw new ApiError(500, `Error uploading file: ${error}`);
@@ -81,7 +90,15 @@ emailQueue.process(async (job) => {
         throw new ApiError(500, `Unknown email type: ${emailType}`);
     }
 
-    console.log(`Email of type ${emailType} sent successfully to ${userEmail}`);
+    const logData = {
+      message: {
+        task: `Email of type ${emailType} sent successfully to ${userEmail}`,
+        statusCode: 200,
+        success: true,
+      },
+    };
+
+    logger.info(logData);
   } catch (error) {
     throw new ApiError(500, `Error sending email: ${error}`);
   }

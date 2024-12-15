@@ -30,6 +30,8 @@ const allowedMethodsMap = {
   '/api/admin/user/:id/toAdmin': ['GET'],
   '/api/admin/items': ['GET'],
   '/api/admin/item/:id': ['DELETE'],
+  '/api/admin/profile': ['GET', 'PUT'],
+  '/api/admin/logout': ['POST'],
 };
 
 function methodNotAllowed(req, res, next) {

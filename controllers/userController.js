@@ -1,8 +1,10 @@
 import User from '../models/User.js';
 import Item from '../models/Item.js';
-import { uploadFile, getFile, deleteFile } from '../utils/bucket.js';
+import { getFile, deleteFile } from '../utils/bucket.js';
+import { fileUploadQueue } from '../utils/queues.js';
 import { undoMatches } from '../utils/matching.js';
 import { ApiError } from '../utils/ApiError.js';
+import logger from '../utils/logger.js';
 
 export async function profile(req, res) {
   try {
@@ -37,33 +39,35 @@ export async function updateProfile(req, res, next) {
       return next(new ApiError(404, 'User not found!'));
     }
     if (!firstName && !lastName && !email && !phone && !profilePhoto) {
-      return next(new ApiError(400, 'At least one field is required!'));
+      return next(new ApiError(400, 'No fields provided to update!'));
     }
 
-    console.log(
-      `Profile update request for:\n name: ${user.firstName} ${user.lastName}\n id: ${user._id}:`
-    );
+    const logData = {
+      message: {
+        task: `Profile update request for: userId: ${user._id}`,
+        statusCode: 200,
+        success: true,
+      },
+    };
+
+    logger.info(logData);
 
     Object.assign(user, {
-      firstName,
-      lastName,
-      email,
-      phone,
+      ...(firstName && { firstName }),
+      ...(lastName && { lastName }),
+      ...(email && { email }),
+      ...(phone && { phone }),
     });
+
     if (profilePhoto) {
-      try {
-        const imageName = user.profilePhoto;
-        await uploadFile({
-          photoData: profilePhoto.buffer,
-          contentType: profilePhoto.mimetype,
-        });
-        user.profilePhoto = imageName;
-      } catch (error) {
-        next(error);
-      }
+      fileUploadQueue.add({
+        photoData: profilePhoto.buffer,
+        contentType: profilePhoto.mimetype,
+        imageName: user.profilePhoto,
+      });
     }
 
-    await user.save();
+    await user.save({ validateModifiedOnly: true });
     return res.status(200).json({ message: 'Profile updated' });
   } catch (error) {
     next(error);
@@ -89,11 +93,17 @@ export async function deleteProfile(req, res, next) {
     }
 
     await deleteFile(user.profilePhoto);
+    const logData = {
+      message: {
+        task: `Successfully deleted the user ${user._id}`,
+        statusCode: 200,
+        success: true,
+      },
+    };
     // Attempt to delete the user
-    const result = await user.deleteOne();
-    if (!result) {
-      return next(new ApiError(500, 'Failed to delete user'));
-    }
+    await user.deleteOne();
+
+    logger.info(logData);
 
     const options = {
       httpOnly: true,
